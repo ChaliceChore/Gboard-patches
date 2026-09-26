@@ -79,7 +79,8 @@ public final class GboardHideAccentPopupsRuntime {
 
     private static boolean isEnabled(Object softKeyView) {
         long now = SystemClock.elapsedRealtime();
-        if (now - cachedEnabledAtElapsedMs < SETTINGS_CACHE_WINDOW_MS) {
+        long cachedAt = cachedEnabledAtElapsedMs;
+        if (cachedAt != Long.MIN_VALUE && now - cachedAt < SETTINGS_CACHE_WINDOW_MS) {
             return cachedEnabled;
         }
         Context context = applicationContext;
