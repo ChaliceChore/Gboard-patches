@@ -9,109 +9,68 @@ import java.util.Map;
 
 /** Reflection handles for the Gboard 18.0.3 SoftKeyDef / ActionDef metadata model. */
 final class GboardHideAccentPopups1803ReflectionHandles {
-    private static final String SOFT_KEY_DEF_CLASS =
-            "com.google.android.libraries.inputmethod.metadata.SoftKeyDef";
-    private static final String ACTION_DEF_CLASS =
-            "com.google.android.libraries.inputmethod.metadata.ActionDef";
-    private static final String ACTION_TYPE_CLASS = "pmy";
-    private static final String ACTION_ENTRY_CLASS = "pnu";
-    private static final String ACTION_BUILDER_CLASS = "pmz";
-    private static final String METADATA_BUILDER_CLASS = "ppo";
+    private final Method exactActionLookup;       // SoftKeyDef.h(pmy)
+    private final Field actionEntries;             // ActionDef.d : pnu[]
+    private final Field actionPopupLabels;         // ActionDef.n : String[]
+    private final Field actionPopupIcons;          // ActionDef.o : int[]
+    private final Field entryKeycode;              // pnu.c : int
+    private final Field entryPayload;              // pnu.e : Object
+    private final Constructor<?> actionBuilder;    // pmz (ActionDef builder)
+    private final Method actionBuilderCopy;        // pmz.j(ActionDef), copies all but entries
+    private final Field actionBuilderEntries;      // pmz.b
+    private final Field actionBuilderLabels;       // pmz.c
+    private final Field actionBuilderIcons;        // pmz.d
+    private final Method actionBuilderBuild;       // pmz.c()
+    private final Constructor<?> metadataBuilder;  // ppo (SoftKeyDef builder)
+    private final Method metadataBuilderCopy;      // ppo.j(SoftKeyDef)
+    private final Method metadataBuilderPut;       // ppo.t(ActionDef)
+    private final Field metadataBuilderActions;    // ppo.b : EnumMap<pmy, ActionDef>
+    private final Method metadataBuilderBuild;     // ppo.d()
+    private final Object pressType;
+    private final Object longPressType;
 
-    private final Class<?> softKeyDefClass;
-    private final Class<?> actionEntryClass;
-    private final Method exactActionLookupMethod;
-    private final Field actionEntriesField;
-    private final Field popupLabelsField;
-    private final Field popupIconsField;
-    private final Field entryKeycodeField;
-    private final Field entryPayloadField;
-    private final Constructor<?> actionBuilderConstructor;
-    private final Method copyActionPropertiesMethod;
-    private final Field actionBuilderEntriesField;
-    private final Field actionBuilderLabelsField;
-    private final Field actionBuilderIconsField;
-    private final Method buildActionMethod;
-    private final Constructor<?> metadataBuilderConstructor;
-    private final Method copyMetadataMethod;
-    private final Method putActionMethod;
-    private final Field metadataBuilderActionsField;
-    private final Method buildMetadataMethod;
-    private final Object pressActionType;
-    private final Object longPressActionType;
+    GboardHideAccentPopups1803ReflectionHandles(ClassLoader loader) throws Throwable {
+        Class<?> softKeyDef = Class.forName(
+                "com.google.android.libraries.inputmethod.metadata.SoftKeyDef", false, loader);
+        Class<?> actionDef = Class.forName(
+                "com.google.android.libraries.inputmethod.metadata.ActionDef", false, loader);
+        Class<?> actionType = Class.forName("pmy", false, loader);
+        Class<?> entry = Class.forName("pnu", false, loader);
+        Class<?> actionBuilderClass = Class.forName("pmz", false, loader);
+        Class<?> metadataBuilderClass = Class.forName("ppo", false, loader);
 
-    GboardHideAccentPopups1803ReflectionHandles(ClassLoader classLoader) throws Throwable {
-        softKeyDefClass = resolve(classLoader, SOFT_KEY_DEF_CLASS);
-        Class<?> actionDefClass = resolve(classLoader, ACTION_DEF_CLASS);
-        Class<?> actionTypeClass = resolve(classLoader, ACTION_TYPE_CLASS);
-        actionEntryClass = resolve(classLoader, ACTION_ENTRY_CLASS);
-        Class<?> actionBuilderClass = resolve(classLoader, ACTION_BUILDER_CLASS);
-        Class<?> metadataBuilderClass = resolve(classLoader, METADATA_BUILDER_CLASS);
+        exactActionLookup = accessible(softKeyDef.getDeclaredMethod("h", actionType));
+        actionEntries = accessible(actionDef.getDeclaredField("d"));
+        actionPopupLabels = accessible(actionDef.getDeclaredField("n"));
+        actionPopupIcons = accessible(actionDef.getDeclaredField("o"));
+        entryKeycode = accessible(entry.getDeclaredField("c"));
+        entryPayload = accessible(entry.getDeclaredField("e"));
+        actionBuilder = accessible(actionBuilderClass.getDeclaredConstructor());
+        actionBuilderCopy = accessible(actionBuilderClass.getDeclaredMethod("j", actionDef));
+        actionBuilderEntries = accessible(actionBuilderClass.getDeclaredField("b"));
+        actionBuilderLabels = accessible(actionBuilderClass.getDeclaredField("c"));
+        actionBuilderIcons = accessible(actionBuilderClass.getDeclaredField("d"));
+        actionBuilderBuild = accessible(actionBuilderClass.getDeclaredMethod("c"));
+        metadataBuilder = accessible(metadataBuilderClass.getDeclaredConstructor());
+        metadataBuilderCopy = accessible(metadataBuilderClass.getDeclaredMethod("j", softKeyDef));
+        metadataBuilderPut = accessible(metadataBuilderClass.getDeclaredMethod("t", actionDef));
+        metadataBuilderActions = accessible(metadataBuilderClass.getDeclaredField("b"));
+        metadataBuilderBuild = accessible(metadataBuilderClass.getDeclaredMethod("d"));
 
-        exactActionLookupMethod = softKeyDefClass.getDeclaredMethod("h", actionTypeClass);
-        actionEntriesField = actionDefClass.getDeclaredField("d");
-        popupLabelsField = actionDefClass.getDeclaredField("n");
-        popupIconsField = actionDefClass.getDeclaredField("o");
-        entryKeycodeField = actionEntryClass.getDeclaredField("c");
-        entryPayloadField = actionEntryClass.getDeclaredField("e");
-
-        actionBuilderConstructor = actionBuilderClass.getDeclaredConstructor();
-        copyActionPropertiesMethod = actionBuilderClass.getDeclaredMethod("j", actionDefClass);
-        actionBuilderEntriesField = actionBuilderClass.getDeclaredField("b");
-        actionBuilderLabelsField = actionBuilderClass.getDeclaredField("c");
-        actionBuilderIconsField = actionBuilderClass.getDeclaredField("d");
-        buildActionMethod = actionBuilderClass.getDeclaredMethod("c");
-
-        metadataBuilderConstructor = metadataBuilderClass.getDeclaredConstructor();
-        copyMetadataMethod = metadataBuilderClass.getDeclaredMethod("j", softKeyDefClass);
-        putActionMethod = metadataBuilderClass.getDeclaredMethod("t", actionDefClass);
-        metadataBuilderActionsField = metadataBuilderClass.getDeclaredField("b");
-        buildMetadataMethod = metadataBuilderClass.getDeclaredMethod("d");
-
-        if (actionEntriesField.getType().getComponentType() != actionEntryClass
-                || actionBuilderEntriesField.getType().getComponentType() != actionEntryClass
-                || popupLabelsField.getType() != String[].class
-                || popupIconsField.getType() != int[].class
-                || entryKeycodeField.getType() != int.class
-                || !Map.class.isAssignableFrom(metadataBuilderActionsField.getType())
-                || buildActionMethod.getReturnType() != actionDefClass) {
+        if (actionEntries.getType().getComponentType() != entry
+                || actionPopupLabels.getType() != String[].class
+                || actionPopupIcons.getType() != int[].class
+                || !Map.class.isAssignableFrom(metadataBuilderActions.getType())) {
             throw new IllegalStateException("18.0.3 SoftKeyDef/ActionDef shape drift");
         }
-
-        AccessibleObject.setAccessible(new AccessibleObject[] {
-                exactActionLookupMethod,
-                actionEntriesField,
-                popupLabelsField,
-                popupIconsField,
-                entryKeycodeField,
-                entryPayloadField,
-                actionBuilderConstructor,
-                copyActionPropertiesMethod,
-                actionBuilderEntriesField,
-                actionBuilderLabelsField,
-                actionBuilderIconsField,
-                buildActionMethod,
-                metadataBuilderConstructor,
-                copyMetadataMethod,
-                putActionMethod,
-                metadataBuilderActionsField,
-                buildMetadataMethod,
-        }, true);
-
-        pressActionType = enumValue(actionTypeClass, "PRESS");
-        longPressActionType = enumValue(actionTypeClass, "LONG_PRESS");
-    }
-
-    boolean isSoftKeyMetadata(Object metadata) {
-        return softKeyDefClass.isInstance(metadata);
+        pressType = enumValue(actionType, "PRESS");
+        longPressType = enumValue(actionType, "LONG_PRESS");
     }
 
     String extractPressText(Object metadata) throws Throwable {
-        Object[] entries = extractEntries(exactActionLookupMethod.invoke(metadata, pressActionType));
-        if (entries.length == 0 || entries[0] == null) {
-            return null;
-        }
-        Object payload = entryPayloadField.get(entries[0]);
+        Object[] entries = entries(exactActionLookup.invoke(metadata, pressType));
+        Object payload = entries.length == 0 || entries[0] == null
+                ? null : entryPayload.get(entries[0]);
         return payload instanceof CharSequence ? payload.toString() : null;
     }
 
@@ -120,91 +79,72 @@ final class GboardHideAccentPopups1803ReflectionHandles {
      * when the key has nothing to hide.
      */
     Object withoutAccentedLongPressEntries(Object metadata, String pressText) throws Throwable {
-        Object longPressAction = exactActionLookupMethod.invoke(metadata, longPressActionType);
-        Object[] entries = extractEntries(longPressAction);
+        Object longPress = exactActionLookup.invoke(metadata, longPressType);
+        Object[] entries = entries(longPress);
         int[] keycodes = new int[entries.length];
         Object[] payloads = new Object[entries.length];
         for (int index = 0; index < entries.length; index++) {
-            Object entry = entries[index];
-            keycodes[index] = entry == null ? 0 : entryKeycodeField.getInt(entry);
-            payloads[index] = entry == null ? null : entryPayloadField.get(entry);
+            if (entries[index] != null) {
+                keycodes[index] = entryKeycode.getInt(entries[index]);
+                payloads[index] = entryPayload.get(entries[index]);
+            }
         }
         boolean[] keep = GboardHideAccentPopupsPolicy.planKeepMask(pressText, keycodes, payloads);
         if (keep == null) {
             return null;
         }
 
-        int keptCount = 0;
-        for (boolean kept : keep) {
-            if (kept) {
-                keptCount++;
+        Object builder = metadataBuilder.newInstance();
+        metadataBuilderCopy.invoke(builder, metadata);
+        Object filteredEntries = filter(entries, keep);
+        if (Array.getLength(filteredEntries) == 0) {
+            // Nothing but accents: drop LONG_PRESS so the key behaves like one without a popup.
+            ((Map<?, ?>) metadataBuilderActions.get(builder)).remove(longPressType);
+        } else {
+            Object action = actionBuilder.newInstance();
+            actionBuilderCopy.invoke(action, longPress);
+            actionBuilderEntries.set(action, filteredEntries);
+            // Popup labels/icons are either per-entry (filter them too) or shared by all entries.
+            Object labels = actionPopupLabels.get(longPress);
+            if (labels != null && Array.getLength(labels) == entries.length) {
+                actionBuilderLabels.set(action, filter(labels, keep));
             }
-        }
-        Object patchedAction = null;
-        if (keptCount > 0) {
-            patchedAction = buildFilteredAction(longPressAction, entries, keep, keptCount);
+            Object icons = actionPopupIcons.get(longPress);
+            if (icons != null && Array.getLength(icons) == entries.length) {
+                actionBuilderIcons.set(action, filter(icons, keep));
+            }
+            Object patchedAction = actionBuilderBuild.invoke(action);
             if (patchedAction == null) {
                 return null;
             }
+            metadataBuilderPut.invoke(builder, patchedAction);
         }
-
-        Object metadataBuilder = metadataBuilderConstructor.newInstance();
-        copyMetadataMethod.invoke(metadataBuilder, metadata);
-        if (patchedAction != null) {
-            putActionMethod.invoke(metadataBuilder, patchedAction);
-        } else {
-            // Nothing but accents: drop LONG_PRESS so the key behaves like one without a popup.
-            ((Map<?, ?>) metadataBuilderActionsField.get(metadataBuilder))
-                    .remove(longPressActionType);
-        }
-        return buildMetadataMethod.invoke(metadataBuilder);
+        return metadataBuilderBuild.invoke(builder);
     }
 
-    private Object buildFilteredAction(Object action, Object[] entries, boolean[] keep,
-            int keptCount) throws Throwable {
-        Object actionBuilder = actionBuilderConstructor.newInstance();
-        copyActionPropertiesMethod.invoke(actionBuilder, action);
-
-        Object filteredEntries = Array.newInstance(actionEntryClass, keptCount);
-        for (int index = 0, target = 0; index < entries.length; index++) {
-            if (keep[index]) {
-                Array.set(filteredEntries, target++, entries[index]);
-            }
-        }
-        actionBuilderEntriesField.set(actionBuilder, filteredEntries);
-
-        String[] labels = (String[]) popupLabelsField.get(action);
-        if (labels != null && labels.length == entries.length) {
-            String[] filteredLabels = new String[keptCount];
-            for (int index = 0, target = 0; index < entries.length; index++) {
-                if (keep[index]) {
-                    filteredLabels[target++] = labels[index];
-                }
-            }
-            actionBuilderLabelsField.set(actionBuilder, filteredLabels);
-        }
-
-        int[] icons = (int[]) popupIconsField.get(action);
-        if (icons != null && icons.length == entries.length) {
-            int[] filteredIcons = new int[keptCount];
-            for (int index = 0, target = 0; index < entries.length; index++) {
-                if (keep[index]) {
-                    filteredIcons[target++] = icons[index];
-                }
-            }
-            actionBuilderIconsField.set(actionBuilder, filteredIcons);
-        }
-        return buildActionMethod.invoke(actionBuilder);
-    }
-
-    private Object[] extractEntries(Object action) throws IllegalAccessException {
-        Object value = action == null ? null : actionEntriesField.get(action);
+    private Object[] entries(Object action) throws IllegalAccessException {
+        Object value = action == null ? null : actionEntries.get(action);
         return value instanceof Object[] ? (Object[]) value : new Object[0];
     }
 
-    private static Class<?> resolve(ClassLoader classLoader, String name)
-            throws ClassNotFoundException {
-        return Class.forName(name, false, classLoader);
+    /** Copies the elements of {@code array} (any array type) whose {@code keep} flag is set. */
+    private static Object filter(Object array, boolean[] keep) {
+        int count = 0;
+        for (boolean kept : keep) {
+            count += kept ? 1 : 0;
+        }
+        Object result = Array.newInstance(array.getClass().getComponentType(), count);
+        for (int index = 0, target = 0; index < keep.length; index++) {
+            if (keep[index]) {
+                Array.set(result, target++, Array.get(array, index));
+            }
+        }
+        return result;
+    }
+
+    private static <T extends AccessibleObject> T accessible(T member) {
+        member.setAccessible(true);
+        return member;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

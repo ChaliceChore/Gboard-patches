@@ -57,8 +57,7 @@ public final class GboardHideAccentPopupsRuntime {
                 }
                 GboardHideAccentPopups1803ReflectionHandles handles =
                         reflectionHandles(metadata.getClass().getClassLoader());
-                String pressText = handles.isSoftKeyMetadata(metadata)
-                        ? handles.extractPressText(metadata) : null;
+                String pressText = handles.extractPressText(metadata);
                 Object patched = GboardHideAccentPopupsPolicy.isLatinLetterKey(pressText)
                         ? handles.withoutAccentedLongPressEntries(metadata, pressText) : null;
                 if (patched == null) {
